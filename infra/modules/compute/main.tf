@@ -8,7 +8,7 @@ terraform {
   }
 }
 
-# ─── AMI: latest Amazon Linux 2023 x86_64 ────────────────────────────────────
+# AMI: latest Amazon Linux 2023 x86_64
 
 data "aws_ami" "al2023" {
   most_recent = true
@@ -25,7 +25,7 @@ data "aws_ami" "al2023" {
   }
 }
 
-# ─── Shared IAM role for both instances (SSM + CW agent) ─────────────────────
+# Shared IAM role for both instances (SSM + CW agent)
 
 resource "aws_iam_role" "ec2" {
   name = "${var.project_name}-${var.environment}-ec2-role"
@@ -55,7 +55,7 @@ resource "aws_iam_instance_profile" "ec2" {
   role = aws_iam_role.ec2.name
 }
 
-# ─── Instance B: isolated target (created first — A's userdata needs its IP) ──
+# Instance B: isolated target (created first — A's userdata needs its IP)
 
 # tfsec:ignore:aws-ec2-no-public-ip-in-subnet
 resource "aws_instance" "instance_b" {
@@ -66,6 +66,7 @@ resource "aws_instance" "instance_b" {
   iam_instance_profile        = aws_iam_instance_profile.ec2.name
   associate_public_ip_address = true # needed for SSM without VPC endpoints
   monitoring                  = true
+  user_data_replace_on_change = true
 
   metadata_options {
     http_tokens   = "required" # IMDSv2
@@ -81,7 +82,7 @@ resource "aws_instance" "instance_b" {
   tags = { Name = "${var.project_name}-${var.environment}-instance-b" }
 }
 
-# ─── Instance A: CW agent + app logs + probe ─────────────────────────────────
+# Instance A: CW agent + app logs + probe
 # Depends implicitly on instance_b (its private_ip is injected into userdata).
 
 # tfsec:ignore:aws-ec2-no-public-ip-in-subnet
