@@ -104,7 +104,7 @@ resource "aws_vpc_security_group_ingress_rule" "nginx_80" {
   ip_protocol                 = "tcp"
   from_port                   = 80
   to_port                     = 80
-  reference_security_group_id = aws_security_group.instance_a.id
+  referenced_security_group_id = aws_security_group.instance_a.id
 }
 
 # tfsec:ignore:aws-ec2-no-public-egress-sgr
