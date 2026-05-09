@@ -11,7 +11,7 @@ terraform {
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
-# ─── VPC ──────────────────────────────────────────────────────────────────────
+# VPC
 
 resource "aws_vpc" "main" {
   cidr_block           = var.vpc_cidr
@@ -21,9 +21,7 @@ resource "aws_vpc" "main" {
   tags = { Name = "${var.project_name}-${var.environment}-vpc" }
 }
 
-# ─── Public subnet ────────────────────────────────────────────────────────────
-# Both instances live here. Public IPs are assigned per-instance (not subnet-wide)
-# so SSM Session Manager can reach them without VPC endpoints.
+# Public subnet
 
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
@@ -34,7 +32,7 @@ resource "aws_subnet" "public" {
   tags = { Name = "${var.project_name}-${var.environment}-public-subnet" }
 }
 
-# ─── Internet gateway + routing ───────────────────────────────────────────────
+# Internet gateway + routing
 
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
@@ -58,8 +56,8 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# ─── Security group: Instance A ───────────────────────────────────────────────
-# Outbound 443 for SSM/CloudWatch; outbound 80 to VPC CIDR for the reject-demo probe.
+# Security group: Instance A
+# Outbound 443 for SSM/CloudWatch; outbound 80 to VPC CIDR for the reject demo.
 
 resource "aws_security_group" "instance_a" {
   name        = "${var.project_name}-${var.environment}-instance-a-sg"
@@ -88,9 +86,9 @@ resource "aws_vpc_security_group_egress_rule" "a_probe_b" {
   cidr_ipv4         = var.vpc_cidr
 }
 
-# ─── Security group: Instance B ───────────────────────────────────────────────
+# Security group: Instance B
 # Intentionally has NO inbound rules. Any traffic from Instance A hits this SG
-# and gets REJECT-logged in VPC Flow Logs — that is the demo story.
+# and gets REJECT-logged in VPC Flow Logs.
 
 resource "aws_security_group" "instance_b" {
   name        = "${var.project_name}-${var.environment}-instance-b-sg"
@@ -110,7 +108,7 @@ resource "aws_vpc_security_group_egress_rule" "b_https" {
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-# ─── VPC Flow Logs → CloudWatch Logs ──────────────────────────────────────────
+# VPC Flow Logs > CloudWatch Logs
 
 # tfsec:ignore:aws-cloudwatch-log-group-customer-key
 resource "aws_cloudwatch_log_group" "flow_logs" {
