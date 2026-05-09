@@ -10,7 +10,7 @@ terraform {
 
 data "aws_region" "current" {}
 
-# ─── App log group ────────────────────────────────────────────────────────────
+# App log group
 # Created here so Terraform manages the retention policy; the CW agent on
 # Instance A ships to this group name (passed in via userdata).
 
@@ -22,7 +22,7 @@ resource "aws_cloudwatch_log_group" "app" {
   tags = { Name = "${var.project_name}-${var.environment}-app-logs" }
 }
 
-# ─── SNS topic + email subscription ──────────────────────────────────────────
+# SNS topic + email subscriptio
 
 # tfsec:ignore:aws-sns-enable-topic-encryption
 resource "aws_sns_topic" "alerts" {
@@ -37,7 +37,7 @@ resource "aws_sns_topic_subscription" "email" {
   endpoint  = var.alarm_email
 }
 
-# ─── CloudWatch alarm: CPU > threshold for 2 consecutive minutes ──────────────
+# CloudWatch alarm: CPU > threshold for 2 consecutive minutes
 
 resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   alarm_name          = "${var.project_name}-${var.environment}-cpu-high"
@@ -60,14 +60,14 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
   insufficient_data_actions = []
 }
 
-# ─── CloudWatch Dashboard ─────────────────────────────────────────────────────
+# CloudWatch Dashboard
 
 resource "aws_cloudwatch_dashboard" "main" {
   dashboard_name = "${var.project_name}-${var.environment}"
 
   dashboard_body = jsonencode({
     widgets = [
-      # ── Context banner ──────────────────────────────────────────────────────
+      # Context banner
       {
         type   = "text"
         x      = 0
@@ -78,7 +78,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           markdown = "## VPC Observability Demo — `${var.environment}`\n**Instance A** (CW Agent): ships memory/disk metrics + structured app logs every 60 s. **Instance B** (isolated): no inbound SG rules — traffic from A generates **action=REJECT** in VPC Flow Logs (`${var.flow_logs_log_group_name}`)."
         }
       },
-      # ── CPU (native EC2 metric — no agent needed) ───────────────────────────
+      # CPU (native EC2 metric — no agent needed)
       {
         type   = "metric"
         x      = 0
@@ -87,7 +87,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title   = "CPU Utilization — Instance A"
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.id
           view    = "timeSeries"
           stacked = false
           stat    = "Average"
@@ -104,7 +104,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           }
         }
       },
-      # ── Memory (CW agent custom metric) ────────────────────────────────────
+      # Memory (CW agent custom metric)
       {
         type   = "metric"
         x      = 12
@@ -113,7 +113,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title   = "Memory Used % — Instance A (CW Agent)"
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.id
           view    = "timeSeries"
           stacked = false
           stat    = "Average"
@@ -123,7 +123,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           ]
         }
       },
-      # ── Disk (CW agent — SEARCH handles unknown device/fstype at deploy time)
+      # Disk (CW agent — SEARCH handles unknown device/fstype at deploy time)
       {
         type   = "metric"
         x      = 0
@@ -132,7 +132,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title   = "Disk Used % — Instance A root volume (CW Agent)"
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.id
           view    = "timeSeries"
           stacked = false
           stat    = "Average"
@@ -146,7 +146,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           ]
         }
       },
-      # ── Network I/O ─────────────────────────────────────────────────────────
+      # Network I/O
       {
         type   = "metric"
         x      = 12
@@ -155,7 +155,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title   = "Network I/O — Instance A"
-          region  = data.aws_region.current.name
+          region  = data.aws_region.current.id
           view    = "timeSeries"
           stacked = false
           stat    = "Average"
@@ -166,7 +166,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           ]
         }
       },
-      # ── Alarm status widget ─────────────────────────────────────────────────
+      # Alarm status widget
       {
         type   = "alarm"
         x      = 0
@@ -178,7 +178,7 @@ resource "aws_cloudwatch_dashboard" "main" {
           alarms = [aws_cloudwatch_metric_alarm.cpu_high.arn]
         }
       },
-      # ── App logs (Logs Insights) ────────────────────────────────────────────
+      # App logs (Logs Insights)
       {
         type   = "log"
         x      = 0
@@ -187,7 +187,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         height = 6
         properties = {
           title  = "App Logs — Instance A (structured JSON, last 50 lines)"
-          region = data.aws_region.current.name
+          region = data.aws_region.current.id
           view   = "table"
           query  = "SOURCE '${var.app_log_group_name}' | fields @timestamp, @message | sort @timestamp desc | limit 50"
         }

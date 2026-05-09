@@ -20,5 +20,5 @@ output "security_group_b_id" {
 
 output "flow_logs_log_group_name" {
   description = "CloudWatch Logs group name for VPC flow logs"
-  value       = aws_cloudwatch_log_group.flow_logs.name
+  value       = aws_cloudwatch_log_group.flow_logs.id
 }
