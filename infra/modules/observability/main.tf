@@ -105,6 +105,7 @@ resource "aws_cloudwatch_dashboard" "main" {
         }
       },
       # Memory (CW agent custom metric)
+      {
         type   = "metric"
         x      = 12
         y      = 2
