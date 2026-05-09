@@ -21,7 +21,7 @@ provider "aws" {
 
 data "aws_caller_identity" "current" {}
 
-# ─── Terraform remote state backend ───────────────────────────────────────────
+# Terraform remote state backend
 
 resource "aws_s3_bucket" "tf_state" {
   bucket        = "${var.project_name}-tfstate-${data.aws_caller_identity.current.account_id}"
@@ -52,7 +52,7 @@ resource "aws_s3_bucket_public_access_block" "tf_state" {
   restrict_public_buckets = true
 }
 
-# ─── GitHub Actions OIDC provider ─────────────────────────────────────────────
+# GitHub Actions OIDC provider
 # The OIDC provider for token.actions.githubusercontent.com is shared per account.
 # We reference the one already created by the cloud-resume-challenge bootstrap
 # rather than creating a duplicate.
@@ -61,7 +61,7 @@ data "aws_iam_openid_connect_provider" "github" {
   url = "https://token.actions.githubusercontent.com"
 }
 
-# ─── IAM role assumed by GitHub Actions via OIDC ──────────────────────────────
+# IAM role assumed by GitHub Actions via OIDC
 
 data "aws_iam_policy_document" "github_actions_assume" {
   statement {

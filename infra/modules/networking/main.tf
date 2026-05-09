@@ -72,7 +72,7 @@ resource "aws_security_group" "instance_a" {
 # tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_vpc_security_group_egress_rule" "a_https" {
   security_group_id = aws_security_group.instance_a.id
-  description       = "HTTPS outbound — SSM Session Manager and CloudWatch agent"
+  description       = "HTTPS outbound for SSM Session Manager and CloudWatch agent"
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
@@ -81,7 +81,7 @@ resource "aws_vpc_security_group_egress_rule" "a_https" {
 
 resource "aws_vpc_security_group_egress_rule" "a_probe_b" {
   security_group_id = aws_security_group.instance_a.id
-  description       = "HTTP outbound to VPC only — probes Instance B to generate REJECT flow log entries"
+  description       = "HTTP outbound to VPC only - probes Instance B to generate REJECT flow log entries"
   ip_protocol       = "tcp"
   from_port         = 80
   to_port           = 80
@@ -94,7 +94,7 @@ resource "aws_vpc_security_group_egress_rule" "a_probe_b" {
 
 resource "aws_security_group" "instance_b" {
   name        = "${var.project_name}-${var.environment}-instance-b-sg"
-  description = "Instance B: isolated — no inbound rules; A's traffic is REJECTED (flow log demo)"
+  description = "Instance B: isolated - no inbound rules; traffic from A is REJECTED (flow log demo)"
   vpc_id      = aws_vpc.main.id
 
   tags = { Name = "${var.project_name}-${var.environment}-instance-b-sg" }
@@ -103,7 +103,7 @@ resource "aws_security_group" "instance_b" {
 # tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_vpc_security_group_egress_rule" "b_https" {
   security_group_id = aws_security_group.instance_b.id
-  description       = "HTTPS outbound — SSM Session Manager"
+  description       = "HTTPS outbound for SSM Session Manager"
   ip_protocol       = "tcp"
   from_port         = 443
   to_port           = 443
@@ -149,8 +149,8 @@ resource "aws_iam_role_policy" "flow_logs" {
         "logs:DescribeLogStreams"
       ]
       Resource = [
-        "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${aws_cloudwatch_log_group.flow_logs.name}",
-        "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:${aws_cloudwatch_log_group.flow_logs.name}:*"
+        "arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:${aws_cloudwatch_log_group.flow_logs.id}",
+        "arn:aws:logs:${data.aws_region.current.id}:${data.aws_caller_identity.current.account_id}:log-group:${aws_cloudwatch_log_group.flow_logs.id}:*"
       ]
     }]
   })
