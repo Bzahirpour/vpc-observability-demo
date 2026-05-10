@@ -98,6 +98,15 @@ resource "aws_security_group" "instance_b" {
   tags = { Name = "${var.project_name}-${var.environment}-instance-b-sg" }
 }
 
+resource "aws_vpc_security_group_ingress_rule" "nginx_80" {
+  security_group_id = aws_security_group.instance_b.id
+  description       = "Allow HTTP from Instance A (flow log reject demo)"
+  ip_protocol       = "tcp"
+  from_port         = 80
+  to_port           = 80
+  referenced_security_group_id = aws_security_group.instance_a.id
+}
+
 # tfsec:ignore:aws-ec2-no-public-egress-sgr
 resource "aws_vpc_security_group_egress_rule" "b_https" {
   security_group_id = aws_security_group.instance_b.id
