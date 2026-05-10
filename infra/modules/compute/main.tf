@@ -94,6 +94,7 @@ resource "aws_instance" "instance_a" {
   iam_instance_profile        = aws_iam_instance_profile.ec2.name
   associate_public_ip_address = true # needed for SSM without VPC endpoints
   monitoring                  = true
+  user_data_replace_on_change = true
 
   metadata_options {
     http_tokens   = "required" # IMDSv2
