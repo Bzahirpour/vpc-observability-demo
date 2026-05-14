@@ -114,6 +114,7 @@ resource "aws_vpc_security_group_egress_rule" "b_https" {
 resource "aws_cloudwatch_log_group" "flow_logs" {
   name              = "/aws/vpc-flow-logs/${var.project_name}-${var.environment}"
   retention_in_days = var.flow_logs_retention_days
+  skip_destroy       = true # prevents the race on terraform destroy/apply
 
   tags = { Name = "${var.project_name}-${var.environment}-flow-logs" }
 }
