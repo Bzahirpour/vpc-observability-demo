@@ -58,11 +58,17 @@ The CloudWatch Agent tails `/var/log/app.log` and ships each JSON line to Logs I
 
 `stress-ng --cpu 2` on Instance A pushes utilization past the 60% threshold. After two consecutive 1-minute evaluation periods, the alarm transitions to ALARM state, the dashboard panel turns red, and SNS delivers an email notification.
 
-### CI/CD pipeline
+### CI/CD pipeline — PR plan comment
+
+![Terraform plan PR comment](docs/screenshots/pr-plan-comment.png)
+
+On every pull request, the pipeline runs `terraform plan` for both `dev` and `prod` and posts the full output as a collapsible comment. Reviewers see exactly what will change before approving — no need to run Terraform locally.
+
+### CI/CD pipeline — deployment pipeline
 
 ![GitHub Actions pipeline](docs/screenshots/ci-pipeline.png)
 
-On push to `main`: lint and security scan (tfsec) → apply dev → apply prod (held behind a required GitHub environment approval). On pull requests, `terraform plan` output is posted automatically as a PR comment for both `dev` and `prod` environments.
+On push to `main`: lint and security scan (tfsec) → apply dev → apply prod (held behind a required GitHub environment approval). The prod job stays pending until a reviewer explicitly approves the deployment.
 
 ## Project structure
 
