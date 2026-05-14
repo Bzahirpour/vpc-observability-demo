@@ -119,9 +119,62 @@ terraform output dashboard_url
 
 ## Demo walkthrough
 
-### REJECT entries in VPC Flow Logs
+### 1. Get outputs
 
-Wait about one minute after apply. In CloudWatch → Logs Insights, select the `/aws/vpc-flow-logs/vpc-observability-demo-dev` log group and run:
+After `terraform apply` completes, print the stack outputs — you will need the instance IDs and private IPs throughout this walkthrough:
+
+```bash
+terraform output
+```
+
+Key values:
+
+| Output | Used for |
+|---|---|
+| `instance_a_id` | SSM session targets |
+| `instance_b_id` | SSM session targets |
+| `instance_a_private_ip` | Flow log queries |
+| `instance_b_private_ip` | Manual curl tests |
+| `dashboard_url` | Open the CloudWatch dashboard |
+| `flow_logs_log_group` | Logs Insights source |
+| `app_log_group` | Logs Insights source |
+
+### 2. SSM into the instances
+
+No SSH key or bastion is required — both instances have SSM agent running via the attached IAM role.
+
+```bash
+# Instance A (CW Agent host)
+aws ssm start-session --target $(terraform output -raw instance_a_id)
+
+# Instance B (isolated target)
+aws ssm start-session --target $(terraform output -raw instance_b_id)
+```
+
+### 3. Confirm nginx is running on Instance B
+
+From an SSM session on Instance B:
+
+```bash
+systemctl status nginx
+curl -s http://localhost/   # returns nginx welcome page
+```
+
+nginx is up and listening on port 80 — the service itself is healthy. The problem demonstrated in the next step is entirely at the network layer.
+
+### 4. Curl Instance B from Instance A — observe the failure
+
+Open an SSM session on Instance A, then attempt to reach Instance B over HTTP:
+
+```bash
+curl -v --connect-timeout 3 http://<instance_b_private_ip>/
+```
+
+The connection times out. Instance B's security group has no inbound rules, so the SYN packet is dropped and never reaches nginx. This is expected — it is the condition the demo is designed to observe.
+
+### 5. Confirm the REJECT entries in VPC Flow Logs
+
+Wait about one minute after the curl attempt, then run the following in CloudWatch → Logs Insights against the `/aws/vpc-flow-logs/vpc-observability-demo-dev` log group:
 
 ```
 fields @timestamp, srcAddr, dstAddr, action, interfaceId
@@ -130,24 +183,51 @@ fields @timestamp, srcAddr, dstAddr, action, interfaceId
 | limit 20
 ```
 
-You will see alternating `ACCEPT` / `REJECT` rows across two ENI IDs for the same src→dst pair — the network-level confirmation that Instance B's isolation is active.
+You will see alternating `ACCEPT` / `REJECT` rows across two ENI IDs for the same src→dst pair. Instance A's ENI records `ACCEPT` (it is permitted to send), Instance B's ENI records `REJECT` (no inbound rule exists). This is the network-level proof — the isolation is enforced, not assumed.
 
-### Trigger the CPU alarm
+### 6. Fix the security group
 
-SSM into Instance A (no SSH key or bastion required):
+The VPC Flow Log entries give you what you need to diagnose the issue: traffic from Instance A is being rejected at Instance B's security group. To resolve it, add an inbound rule that allows HTTP from the VPC CIDR:
 
-```bash
-aws ssm start-session --target <instance_a_id>
+In `infra/modules/networking/main.tf`, add:
+
+```hcl
+resource "aws_vpc_security_group_ingress_rule" "b_http_from_a" {
+  security_group_id            = aws_security_group.instance_b.id
+  description                  = "Allow HTTP from Instance A"
+  ip_protocol                  = "tcp"
+  from_port                    = 80
+  to_port                      = 80
+  referenced_security_group_id = aws_security_group.instance_a.id
+}
 ```
 
-Then run:
+Then apply:
+
+```bash
+terraform apply
+```
+
+### 7. Verify the fix
+
+From Instance A, curl Instance B again:
+
+```bash
+curl -v --connect-timeout 3 http://<instance_b_private_ip>/
+```
+
+You should get a 200 response from nginx. In Logs Insights, re-run the same query — the entries for Instance B's ENI now show `ACCEPT` instead of `REJECT`.
+
+### 8. Trigger the CPU alarm
+
+From the Instance A SSM session:
 
 ```bash
 sudo dnf install -y stress-ng
 stress-ng --cpu 2 --timeout 120s
 ```
 
-After two consecutive evaluation periods above the 60% threshold the alarm transitions to ALARM state, the dashboard panel turns red, and SNS delivers an email.
+After two consecutive 1-minute evaluation periods above the 60% threshold, the alarm transitions to ALARM state, the dashboard panel turns red, and SNS delivers an email.
 
 ## Cleanup
 
